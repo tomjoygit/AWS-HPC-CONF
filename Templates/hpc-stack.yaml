@@ -130,8 +130,8 @@ Resources:
       Name: !Sub '${AWS::StackName}'
       Description: This the password used for RDS and ec2-user
       GenerateSecretString:
-        PasswordLength: 16
-        ExcludeCharacters: '"@/\_}{][`'
+        PasswordLength: 10
+        ExcludeCharacters: '"@/\_}{][#,|^`'
   DatabaseParameterGroup:
     Type: 'AWS::RDS::DBClusterParameterGroup'
     Properties:
