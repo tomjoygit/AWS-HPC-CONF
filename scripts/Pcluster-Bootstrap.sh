@@ -51,11 +51,10 @@ EOF
 fi
 export FSX
 
-#/usr/bin/envsubst < "AWS-HPC-CONF/parallelcluster/config.${AWS_REGION_NAME}.sample.yaml" > config.${AWS_REGION_NAME}.yaml
 /usr/bin/envsubst '${SLURM_DB_ENDPOINT}' < "AWS-HPC-CONF/enginframe/mysql/efdb.config" > efdb.config
 /usr/bin/envsubst '${SLURM_DB_ENDPOINT}' < "AWS-HPC-CONF/enginframe/efinstall.config" > efinstall.config
 /usr/bin/envsubst '${S3_BUCKET}' < "AWS-HPC-CONF/enginframe/fm.browse.ui" > fm.browse.ui
-/usr/bin/envsubst '${S3_BUCKET},${FSX},${AWS_REGION_NAME},${PRIVATE_SUBNET_ID},${ADDITIONAL_SG},${DB_SG},${KEY_PAIR},${SLURM_DB_ENDPOINT},${SECRET_ARN}' < "AWS-HPC-CONF/parallelcluster/config.eu-west-1.sample.yaml" > config.${AWS_REGION_NAME}.yaml
+/usr/bin/envsubst '${S3_BUCKET},${FSX},${AWS_REGION_NAME},${PRIVATE_SUBNET_ID},${ADDITIONAL_SG},${DB_SG},${KEY_PAIR},${SLURM_DB_ENDPOINT},${SECRET_ARN}' < "AWS-HPC-CONF/parallelcluster/config.${AWS_REGION_NAME}.sample.yaml" > config.${AWS_REGION_NAME}.yaml
 
 /usr/bin/aws s3 cp --quiet efinstall.config "s3://${S3_BUCKET}/AWS-HPC-CONF/enginframe/efinstall.config" --region "${AWS_REGION_NAME}"
 /usr/bin/aws s3 cp --quiet fm.browse.ui "s3://${S3_BUCKET}/AWS-HPC-CONF/enginframe/fm.browse.ui" --region "${AWS_REGION_NAME}"
