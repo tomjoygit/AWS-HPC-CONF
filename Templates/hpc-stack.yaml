@@ -85,7 +85,7 @@ Resources:
               echo "export AWS_REGION_NAME=${AWS::Region}" >> cluster_env
               echo "export S3_BUCKET=${PclusterOutputBucket}" >> cluster_env
               echo "export FSX_ID=${FSx}" >> cluster_env
-              echo "export PRIVATE_SUBNET_ID=${PrivateSubnetAId}" >> cluster_env 
+              echo "export PRIVATE_SUBNET_ID=${PrivateSubnetBId}" >> cluster_env 
               echo "export ALB_PUBLIC_DNS_NAME='${ALB}'" >> cluster_env              
               echo "export CLUSTER_NAME=${AWS::StackName}" >> cluster_env
               echo "export ADDITIONAL_SG=${PCAdditionalSecurityGroup}" >> cluster_env
