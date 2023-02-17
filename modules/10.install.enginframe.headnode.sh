@@ -56,7 +56,7 @@ EOF
 
 
     # add EnginFrame users if not already exist
-    id -u efnobody &>/dev/null || adduser efnobody
+    id -u efnobody &>/dev/null || /usr/sbin/adduser efnobody
 
     echo "${ec2user_pass}" | passwd ec2-user --stdin
 
@@ -83,10 +83,10 @@ configureEnginFrameDB(){
     chmod +x "/tmp/mysql"
     
     export EF_DB_PASS="${ec2user_pass}"
-    /usr/bin/envsubst < efdb.config > efdb.pass.config
+    /usr/bin/envsubst < /tmp/efdb.config > efdb.pass.config
     
-    /tmp/mysql --defaults-extra-file="efdb.pass.config" < "ef.mysql"
-    rm efdb.pass.config efdb.config ef.mysql mysql
+    /tmp/mysql --defaults-extra-file="efdb.pass.config" < "/tmp/ef.mysql"
+    rm /tmp/efdb.pass.config /tmp/efdb.config /tmp/ef.mysql /tmp/mysql
 }
 
 customizeEnginFrame() {

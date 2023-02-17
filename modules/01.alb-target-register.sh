@@ -29,7 +29,7 @@ SetupALB() {
 	tgt_name="$(echo $stack_name | sed 's/tme-//')"-tgt
 	arn_loadbalacer=`aws  elbv2 describe-load-balancers  --region "${cfn_region}" --query "LoadBalancers[? LoadBalancerName == '${alb_name}'].LoadBalancerArn" --output text`
 	arn_targetgroup=`aws  elbv2 describe-target-groups --name "${tgt_name}"  --region "${cfn_region}" --query "TargetGroups[? TargetGroupName == '${tgt_name}'].TargetGroupArn" --output text`
-	aws elbv2 register-targets --target-group-arn "${arn_targetgroup}" --targets Id="${instance_priv}" --region "${cfn_region}"
+	aws elbv2 register-targets --target-group-arn "${arn_targetgroup}" --targets Id="${instance_id}" --region "${cfn_region}"
 }
 
 # main
