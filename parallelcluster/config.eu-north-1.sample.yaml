@@ -9,6 +9,7 @@ HeadNode:
   CustomActions:
     OnNodeConfigured:
       Args:
+        - 01.alb-target-register.sh      
         - 04.configure.slurm.AllOrNothing.headnode.sh
         - 07.configure.slurm.tagging.headnode.sh
         - 10.install.enginframe.headnode.sh
