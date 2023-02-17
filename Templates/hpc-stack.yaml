@@ -69,6 +69,9 @@ Resources:
       KeyName: hpc-aws-key
       SubnetId: !Ref PrivateSubnetAId
       IamInstanceProfile: !Ref PclusterInstanceProfile
+      Tags:
+        - Key: 'Name'
+          Value: 'Pcluster-Mgmt-Node'
       UserData:
         Fn::Base64: !Sub
             - |
