@@ -64,9 +64,9 @@ Resources:
   PclusterManagementNode:
     Type: AWS::EC2::Instance
     Properties:
-      ImageId: ami-0b752bf1df193a6c4
-      InstanceType: t2.micro
-      KeyName: test-key
+      ImageId: ami-0bb935e4614c12d86
+      InstanceType: t3.micro
+      KeyName: hpc-aws-key
       SubnetId: !Ref PrivateSubnetAId
       IamInstanceProfile: !Ref PclusterInstanceProfile
       UserData:
@@ -94,8 +94,8 @@ Resources:
               echo "export SLURM_DB_ENDPOINT='${DB_ENDPOINT}'" >> cluster_env
               echo "export KEY_PAIR=hpc-aws-key" >> cluster_env
               echo 'export POST_INSTALL=\"s3://${PclusterOutputBucket}/AWS-HPC-CONF/scripts/post.install.sh\"' >> cluster_env
-              sudo -H -u ec2-user bash -c "aws s3 cp --quiet --recursive AWS-HPC-CONF \"s3://${PclusterOutputBucket}/AWS-HPC\" --region ${AWS::Region}"
-              chmod -x /home/ec2-user/environment/AWS-HPC/scripts/Pcluster-Bootstrap.sh
+              sudo -H -u ec2-user bash -c "aws s3 cp --quiet --recursive AWS-HPC-CONF \"s3://${PclusterOutputBucket}/AWS-HPC-CONF\" --region ${AWS::Region}"
+              chmod -x /home/ec2-user/environment/AWS-HPC-CONF/scripts/Pcluster-Bootstrap.sh
               sudo -H -u ec2-user bash -c "bash /home/ec2-user/environment/AWS-HPC-CONF/scripts/Pcluster-Bootstrap.sh"             
             - DB_ENDPOINT: !GetAtt SlurmDB.Endpoint.Address
               ALB: !GetAtt ApplicationLoadBalancer.DNSName
@@ -274,7 +274,7 @@ Resources:
         - Key: idle_timeout.timeout_seconds
           Value: 180
  
- TargetGroupEF:
+  TargetGroupEF:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
       Name: !Sub '${AWS::StackName}-tgt'
