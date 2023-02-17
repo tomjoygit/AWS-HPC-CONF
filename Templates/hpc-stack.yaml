@@ -1,0 +1,332 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Testing-HPC
+
+Metadata: 
+  AWS::CloudFormation::Interface:
+    ParameterGroups: 
+      - 
+        Label: 
+          default: ""
+        Parameters: 
+          - VpcId
+          - PublicSubnetAId
+          - PrivateSubnetAId
+          - PrivateSubnetBId
+          - FSx
+    ParameterLabels: 
+      VpcId: 
+        default: 'VPC:'
+      PublicSubnetAId: 
+        default: 'Public Subnet 1:'
+      PrivateSubnetAId: 
+        default: 'Private Subnet 1:'
+      PrivateSubnetBId: 
+        default: 'Private Subnet 2:'
+      FSx: 
+        default: 'FSx:'
+
+Parameters:
+
+    VpcId:
+      Description: 'Please, enter your VPC ID, or just leave "AUTO" if you want to re-use an existing one.'
+      Type: String
+      AllowedPattern: ^(AUTO|vpc-[0-9a-z]+)$
+      Default: AUTO
+
+    PublicSubnetAId: 
+      Description: 'Please, enter the ID of the Public Subnet you wish to use, or just leave "AUTO" if you want to re-use an existing one.'
+      Type: String
+      AllowedPattern: ^(AUTO|subnet-[0-9a-z]+)$
+      Default : AUTO
+
+    PrivateSubnetAId: 
+      Description: 'Please, enter another ID of the Private Subnet you wish to use, or just leave "AUTO" if you want to re-use an existing one.'
+      Type: String
+      AllowedPattern: ^(AUTO|subnet-[0-9a-z]+)$
+      Default : AUTO
+    
+    PrivateSubnetBId:
+      Description: 'Please, enter the ID of the Private Subnet you wish to use, or just leave "AUTO" if you want to re-use an existing one.'
+      Type: String
+      AllowedPattern: ^(AUTO|subnet-[0-9a-z]+)$
+      Default : AUTO   
+    FSx: 
+      Description: 'Please, enter your FSx ID, or just leave "AUTO" if you want to re-use an existing one.'
+      Type: String
+      AllowedPattern: ^(AUTO|fs-[0-9a-z]+)$
+      Default : AUTO
+
+
+Conditions:
+  CreateVpc: !Equals [!Ref VpcId, AUTO]
+
+Resources:
+  PclusterManagementNode:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-0b752bf1df193a6c4
+      InstanceType: t2.micro
+      KeyName: test-key
+      SubnetId: !Ref PrivateSubnetAId
+      IamInstanceProfile: !Ref PclusterInstanceProfile
+      UserData:
+        Fn::Base64: !Sub
+            - |
+              #!/bin/bash
+              set -x
+              mkdir /home/ec2-user/environment
+              exec >/home/ec2-user/environment/lambda.log; exec 2>&1 
+              echo LANG=en_US.utf-8 >> /etc/environment
+              echo LC_ALL=en_US.UTF-8 >> /etc/environment
+              yum install git -y
+              cd /home/ec2-user/environment
+              git clone "https://github.com/tomjoygit/AWS-HPC-CONF"
+              echo "export AWS_DEFAULT_REGION=${AWS::Region}" >> cluster_env
+              echo "export AWS_REGION_NAME=${AWS::Region}" >> cluster_env
+              echo "export S3_BUCKET=${PclusterOutputBucket}" >> cluster_env
+              echo "export FSX_ID=${FSx}" >> cluster_env
+              echo "export PRIVATE_SUBNET_ID=${PrivateSubnetAId}" >> cluster_env 
+              echo "export ALB_PUBLIC_DNS_NAME='${ALB}'" >> cluster_env              
+              echo "export CLUSTER_NAME=${AWS::StackName}" >> cluster_env
+              echo "export ADDITIONAL_SG=${PCAdditionalSecurityGroup}" >> cluster_env
+              echo "export DB_SG=${DatabaseClientSecurityGroup}" >> cluster_env
+              echo "export SECRET_ARN=${Password}" >> cluster_env
+              echo "export SLURM_DB_ENDPOINT='${DB_ENDPOINT}'" >> cluster_env
+              echo "export KEY_PAIR=hpc-aws-key" >> cluster_env
+              echo 'export POST_INSTALL=\"s3://${PclusterOutputBucket}/AWS-HPC-CONF/scripts/post.install.sh\"' >> cluster_env
+              sudo -H -u ec2-user bash -c "aws s3 cp --quiet --recursive AWS-HPC-CONF \"s3://${PclusterOutputBucket}/AWS-HPC\" --region ${AWS::Region}"
+              chmod -x /home/ec2-user/environment/AWS-HPC/scripts/Pcluster-Bootstrap.sh
+              sudo -H -u ec2-user bash -c "bash /home/ec2-user/environment/AWS-HPC-CONF/scripts/Pcluster-Bootstrap.sh"             
+            - DB_ENDPOINT: !GetAtt SlurmDB.Endpoint.Address
+              ALB: !GetAtt ApplicationLoadBalancer.DNSName
+  PCAdditionalSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: 'Allow 8443 and 80 from the ALB'
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 8443
+        ToPort: 8443
+        SourceSecurityGroupId:  !Ref ALBSecurityGroup
+      - IpProtocol: tcp
+        FromPort: 80
+        ToPort: 80
+        SourceSecurityGroupId:  !Ref ALBSecurityGroup
+      - IpProtocol: tcp
+        FromPort: 389
+        ToPort: 389
+        SourceSecurityGroupId:  !Ref ALBSecurityGroup
+      - IpProtocol: udp
+        FromPort: 389
+        ToPort: 389
+        SourceSecurityGroupId:  !Ref ALBSecurityGroup
+  Password:
+    Type: 'AWS::SecretsManager::Secret'
+    Properties:
+      Name: !Sub '${AWS::StackName}'
+      Description: This the password used for RDS and ec2-user
+      GenerateSecretString:
+        PasswordLength: 16
+        ExcludeCharacters: '"@/\_}{][`'
+  DatabaseParameterGroup:
+    Type: 'AWS::RDS::DBClusterParameterGroup'
+    Properties:
+      Description: Cluster parameter group for aurora-mysql5.7
+      Family: aurora-mysql5.7
+      Parameters:
+        require_secure_transport: 'ON'
+        innodb_lock_wait_timeout: '900'
+      Tags:
+        - Key: 'parallel-cluster:accounting'
+          Value: rds-parameter-group
+        - Key: 'parallel-cluster:accounting:scheduler'
+          Value: slurm
+        - Key: 'parallel-cluster:accounting:version'
+          Value: '1.0'
+          
+  SlurmDBSubnetGroup: 
+    Type: 'AWS::RDS::DBSubnetGroup'
+    Properties:
+      DBSubnetGroupDescription: SubnetGroup
+      SubnetIds: 
+        - !Ref PrivateSubnetAId
+        - !Ref PrivateSubnetBId
+  SlurmDBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: 'Database SG'
+      VpcId: !Ref VpcId
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic by default
+          IpProtocol: '-1'
+
+  DatabaseSecurityGroupInboundRule:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      IpProtocol: tcp
+      Description: Allow incoming connections from client security group
+      FromPort: !GetAtt
+        - SlurmDB
+        - Endpoint.Port
+      GroupId: !GetAtt
+        - SlurmDBSecurityGroup
+        - GroupId
+      SourceSecurityGroupId: !GetAtt
+        - DatabaseClientSecurityGroup
+        - GroupId
+      ToPort: !GetAtt
+        - SlurmDB
+        - Endpoint.Port
+
+  SlurmDB:
+    Type: 'AWS::RDS::DBInstance'
+    Properties:
+      DBInstanceIdentifier: !Sub '${AWS::StackName}-SlurmDB'
+      DBInstanceClass: 'db.t4g.micro'
+      MultiAZ: false
+      AllocatedStorage: '20'
+      StorageType: gp3
+      MaxAllocatedStorage: 2000
+      Engine: MySQL
+      EngineVersion: 8.0.28
+      MasterUsername: 'admin'
+      MasterUserPassword: !Sub '{{resolve:secretsmanager:${Password}:SecretString:::}}'
+      DBSubnetGroupName: !Ref SlurmDBSubnetGroup
+      VPCSecurityGroups: 
+        - !Ref 'SlurmDBSecurityGroup'
+
+  DatabaseClientSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Security Group to allow connection to DB
+      Tags:
+        - Key: 'parallel-cluster:accounting'
+          Value: client-security-group
+        - Key: 'parallel-cluster:accounting:scheduler'
+          Value: slurm
+        - Key: 'parallel-cluster:accounting:version'
+          Value: '1.0'
+      VpcId: !Ref VpcId
+  DatabaseClientSecurityGroupOutboundRule:
+    Type: 'AWS::EC2::SecurityGroupEgress'
+    Properties:
+      GroupId: !GetAtt
+        - DatabaseClientSecurityGroup
+        - GroupId
+      IpProtocol: tcp
+      Description: Allow incoming connections from PCluster
+      DestinationSecurityGroupId: !GetAtt
+        - SlurmDBSecurityGroup
+        - GroupId
+      FromPort: !GetAtt
+        - SlurmDB
+        - Endpoint.Port
+      ToPort: !GetAtt
+        - SlurmDB
+        - Endpoint.Port
+        
+            
+  PclusterOutputBucket:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      BucketName: !Sub '${AWS::StackName}-bucket'
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+  PclusterInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - ec2.amazonaws.com
+            - ssm.amazonaws.com
+            - s3.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/AdministratorAccess
+      Path: "/"
+  PclusterInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: "/"
+      Roles:
+      - Ref: PclusterInstanceRole
+      
+  ApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Sub '${AWS::StackName}-alb'
+      Scheme: internal
+      Subnets: 
+        -  !Ref PrivateSubnetAId
+        -  !Ref PrivateSubnetBId
+      SecurityGroups:
+        - !Ref ALBSecurityGroup
+      LoadBalancerAttributes:
+        - Key: idle_timeout.timeout_seconds
+          Value: 180
+ 
+ TargetGroupEF:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub '${AWS::StackName}-tgt'
+      VpcId: !Ref VpcId
+      Port: 8443
+      Protocol: HTTPS
+
+  HTTPSListener:
+    Type: "AWS::ElasticLoadBalancingV2::Listener"
+    Properties:
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 443
+      Protocol: "HTTPS"
+      SslPolicy: "ELBSecurityPolicy-2016-08"
+      Certificates:
+        - CertificateArn: 'arn:aws:acm:eu-north-1:769212167466:certificate/b0f08be8-ef92-4ebc-82f7-c79640ff5ea6'
+      DefaultActions: 
+        - 
+          Order: 1
+          TargetGroupArn: !Ref TargetGroupEF
+          Type: "forward"
+
+  HTTPListener:
+    Type: "AWS::ElasticLoadBalancingV2::Listener"
+    Properties:
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 80
+      Protocol: "HTTP"
+      DefaultActions: 
+        - 
+          Order: 1
+          RedirectConfig: 
+            Protocol: "HTTPS"
+            Port: "443"
+            Host: "#{host}"
+            Path: "/#{path}"
+            Query: "#{query}"
+            StatusCode: "HTTP_301"
+          Type: "redirect"
+
+
+  ALBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: 'Allow https and http'
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 443
+        ToPort: 443
+        CidrIp: 0.0.0.0/0
+      - IpProtocol: tcp
+        FromPort: 80
+        ToPort: 80
+        CidrIp: 0.0.0.0/0
