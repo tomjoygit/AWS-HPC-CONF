@@ -235,6 +235,11 @@ Resources:
     Type: "AWS::S3::Bucket"
     Properties:
       BucketName: !Sub '${AWS::StackName}-bucket'
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true      
+        RestrictPublicBuckets: true
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
