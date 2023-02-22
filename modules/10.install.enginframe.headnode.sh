@@ -111,7 +111,7 @@ startEnginFrame() {
 # ----------------------------------------------------------------------------
 main() {
     echo "[INFO][$(date '+%Y-%m-%d %H:%M:%S')] 10.install.enginframe.headnode.sh: START" >&2
-    stack_name_enginframe=`echo ${stack_name} |sed '0,/tme-dev-/{s/tme-dev-//}'`
+    stack_name_enginframe=`echo ${stack_name} |sed '0,/tme-/{s/tme-//}'`
     export ec2user_pass="$(aws secretsmanager get-secret-value --secret-id "${stack_name_enginframe}" --query SecretString --output text --region "${cfn_region}")"
     installEnginFrame
     EF_TOP="${NICE_ROOT}/enginframe"
