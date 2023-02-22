@@ -1,0 +1,5 @@
+VpcId=vpc-0b546b3c0409b18d7
+PublicSubnetAId=subnet-046a01a8961fee193   
+PrivateSubnetAId=subnet-00caaa30433cc6581
+PrivateSubnetBId=subnet-02f21e6a1346816b2
+FSx=AUTO

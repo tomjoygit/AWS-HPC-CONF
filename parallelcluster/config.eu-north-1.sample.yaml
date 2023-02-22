@@ -20,10 +20,11 @@ HeadNode:
     AdditionalIamPolicies:
       - Policy: arn:aws:iam::aws:policy/ElasticLoadBalancingFullAccess
       - Policy: arn:aws:iam::aws:policy/SecretsManagerReadWrite
+      - Policy: arn:aws:iam::aws:policy/AmazonSSMFullAccess
     S3Access:
       - BucketName: '*'
         EnableWriteAccess: true
-  InstanceType: c5.4xlarge
+  InstanceType: c5.2xlarge
   Networking:
     AdditionalSecurityGroups:
       - ${ADDITIONAL_SG}

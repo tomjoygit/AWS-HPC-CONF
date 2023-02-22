@@ -25,11 +25,14 @@ SetupALB() {
 	instance_private_ip=`curl http://169.254.169.254/latest/meta-data/local-ipv4`
 	mac_id=`curl http://169.254.169.254/latest/meta-data/network/interfaces/macs/`
 	instance_vpc_id=`curl http://169.254.169.254/latest/meta-data/network/interfaces/macs/${mac_id}/vpc-id`
-	alb_name="$(echo $stack_name | sed 's/tme-//')"-alb
-	tgt_name="$(echo $stack_name | sed 's/tme-//')"-tgt
-	arn_loadbalacer=`aws  elbv2 describe-load-balancers  --region "${cfn_region}" --query "LoadBalancers[? LoadBalancerName == '${alb_name}'].LoadBalancerArn" --output text`
-	arn_targetgroup=`aws  elbv2 describe-target-groups --name "${tgt_name}"  --region "${cfn_region}" --query "TargetGroups[? TargetGroupName == '${tgt_name}'].TargetGroupArn" --output text`
-	aws elbv2 register-targets --target-group-arn "${arn_targetgroup}" --targets Id="${instance_id}" --region "${cfn_region}"
+	ef_alb_name="$(echo $stack_name | sed 's/tme-//')"-ef-alb
+	ef_tgt_name="$(echo $stack_name | sed 's/tme-//')"-ef-tgt
+        ssh_tgt_name="$(echo $stack_name | sed 's/tme-//')"-ssh-tgt
+	arn_loadbalacer=`aws  elbv2 describe-load-balancers  --region "${cfn_region}" --query "LoadBalancers[? LoadBalancerName == '${ef_alb_name}'].LoadBalancerArn" --output text`
+	arn_targetgroup_ef=`aws  elbv2 describe-target-groups --name "${ef_tgt_name}"  --region "${cfn_region}" --query "TargetGroups[? TargetGroupName == '${ef_tgt_name}'].TargetGroupArn" --output text`
+	arn_targetgroup_ssh=`aws  elbv2 describe-target-groups --name "${ssh_tgt_name}"  --region "${cfn_region}" --query "TargetGroups[? TargetGroupName == '${ssh_tgt_name}'].TargetGroupArn" --output text`
+	aws elbv2 register-targets --target-group-arn "${arn_targetgroup_ef}" --targets Id="${instance_id}" --region "${cfn_region}"
+	aws elbv2 register-targets --target-group-arn "${arn_targetgroup_ssh}" --targets Id="${instance_id}" --region "${cfn_region}"       
 }
 
 # main

@@ -266,7 +266,7 @@ Resources:
   ApplicationLoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
-      Name: !Sub '${AWS::StackName}-alb'
+      Name: !Sub '${AWS::StackName}-ef-alb'
       Scheme: internal
       Subnets: 
         -  !Ref PrivateSubnetAId
@@ -280,7 +280,7 @@ Resources:
   TargetGroupEF:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
-      Name: !Sub '${AWS::StackName}-tgt'
+      Name: !Sub '${AWS::StackName}-ef-tgt'
       VpcId: !Ref VpcId
       Port: 8443
       Protocol: HTTPS
@@ -333,3 +333,32 @@ Resources:
         FromPort: 80
         ToPort: 80
         CidrIp: 0.0.0.0/0
+
+  NetworkLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Sub "${AWS::StackName}-NLB"
+      Scheme: internal
+      Subnets: 
+        -  !Ref PrivateSubnetAId
+        -  !Ref PrivateSubnetBId
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-NLB"
+      Type: network 
+  NLBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref NetworkLoadBalancer
+      Port: 22
+      Protocol: TCP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroupSSH     
+  TargetGroupSSH:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub '${AWS::StackName}-ssh-tgt'
+      VpcId: !Ref VpcId
+      Port: 22
+      Protocol: TCP

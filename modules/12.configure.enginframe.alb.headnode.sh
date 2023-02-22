@@ -30,8 +30,8 @@ EOF
 ef.download.server.url=https://127.0.0.1:8443/enginframe/download
 EOF
 
-    alb_name="$(echo $stack_name | sed 's/tme-//')-alb"
-    ALB_PUBLIC_DNS_NAME=$(aws elbv2 describe-load-balancers --names "${alb_name}" --query "LoadBalancers[? LoadBalancerName == '${alb_name}'].DNSName" --output text --region "${cfn_region}")
+    ef_alb_name="$(echo $stack_name | sed 's/tme-//')-ef-alb"
+    ALB_PUBLIC_DNS_NAME=$(aws elbv2 describe-load-balancers --names "${ef_alb_name}" --query "LoadBalancers[? LoadBalancerName == '${ef_alb_name}'].DNSName" --output text --region "${cfn_region}")
 
     pattern='^ALB_PUBLIC_DNS_NAME=.*$'
     replace="ALB_PUBLIC_DNS_NAME=${ALB_PUBLIC_DNS_NAME}"

@@ -65,9 +65,9 @@ rm -f fm.browse.ui efinstall.config
 
 
 #Create the cluster and wait
-/home/ec2-user/.local/bin/pcluster create-cluster --cluster-name "tme-${CLUSTER_NAME}" --cluster-configuration config.${AWS_REGION_NAME}.yaml --region ${AWS_REGION_NAME} --rollback-on-failure false --wait
+/home/ec2-user/.local/bin/pcluster create-cluster --cluster-name "tme-dev-${CLUSTER_NAME}" --cluster-configuration config.${AWS_REGION_NAME}.yaml --region ${AWS_REGION_NAME} --rollback-on-failure false --wait
 
-HEADNODE_PRIVATE_IP=$(/home/ec2-user/.local/bin/pcluster describe-cluster --cluster-name "tme-${CLUSTER_NAME}" --region ${AWS_REGION_NAME}  | jq -r '.headNode.privateIpAddress')
+HEADNODE_PRIVATE_IP=$(/home/ec2-user/.local/bin/pcluster describe-cluster --cluster-name "tme-dev-${CLUSTER_NAME}" --region ${AWS_REGION_NAME}  | jq -r '.headNode.privateIpAddress')
 echo "export HEADNODE_PRIVATE_IP='${HEADNODE_PRIVATE_IP}'" >> cluster_env
 
 # Modify the Message Of The Day
@@ -80,7 +80,7 @@ sudo rm -f /etc/update-motd.d/*
 #attach the ParallelCluster SG to the Cloud9 instance (for FSx or NFS)
 INSTANCE_ID=$(curl http://169.254.169.254/latest/meta-data/instance-id)
 SG_PCLUSTERNODE=$(aws ec2 describe-instances --instance-ids $INSTANCE_ID --query Reservations[*].Instances[*].SecurityGroups[*].GroupId  --region ${AWS_REGION_NAME} --output text)
-SG_HEADNODE=$(aws cloudformation describe-stack-resources --stack-name "tme-${CLUSTER_NAME}" --logical-resource-id ComputeSecurityGroup --query "StackResources[*].PhysicalResourceId"  --region ${AWS_REGION_NAME} --output text)
+SG_HEADNODE=$(aws cloudformation describe-stack-resources --stack-name "tme-dev-${CLUSTER_NAME}" --logical-resource-id ComputeSecurityGroup --query "StackResources[*].PhysicalResourceId"  --region ${AWS_REGION_NAME} --output text)
 aws ec2 modify-instance-attribute --instance-id $INSTANCE_ID --groups $SG_PCLUSTERNODE $SG_HEADNODE --region ${AWS_REGION_NAME}
 
 #increase the maximum number of files that can be handled by file watcher,
@@ -88,7 +88,7 @@ sudo bash -c 'echo "fs.inotify.max_user_watches=524288" >> /etc/sysctl.conf' && 
 
 if [[ $FSX_ID == "AUTO" ]];then
   #FSX_ID=$(aws cloudformation describe-stack-resources --stack-name "tme-${CLUSTER_NAME}" --logical-resource-id FSX0 --query "StackResources[*].PhysicalResourceId" --region ${AWS_REGION_NAME} --output text)
-   FSX_ID=$(aws cloudformation describe-stack-resources --stack-name "tme-${CLUSTER_NAME}" --query "StackResources[? contains(ResourceType,'AWS::FSx::FileSystem')].PhysicalResourceId" --region ${AWS_REGION_NAME} --output text)
+   FSX_ID=$(aws cloudformation describe-stack-resources --stack-name "tme-dev-${CLUSTER_NAME}" --query "StackResources[? contains(ResourceType,'AWS::FSx::FileSystem')].PhysicalResourceId" --region ${AWS_REGION_NAME} --output text)
 fi
 
 FSX_DNS_NAME=$(aws fsx describe-file-systems --file-system-ids $FSX_ID --query "FileSystems[*].DNSName" --region ${AWS_REGION_NAME} --output text)
